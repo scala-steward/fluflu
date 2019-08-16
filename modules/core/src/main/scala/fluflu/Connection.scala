@@ -117,6 +117,7 @@ object Connection {
     def isClosed: Boolean =
       closed || !channel.isConnected
 
+    @tailrec
     private def _write(message: ByteBuffer, ch: SocketChannel, retries: Int, sleeper: Sleeper): Try[Int] = {
       @tailrec def loop(acc: Int): Int =
         if (!message.hasRemaining) acc
@@ -137,6 +138,7 @@ object Connection {
       }
     }
 
+    @tailrec
     private def _read(dst: ByteBuffer, size: Int, ch: SocketChannel, retries: Int, sleeper: Sleeper): Try[Int] =
       Try(ch.read(dst)) match {
         case Success(sz) if size + sz == settings.readSize =>
