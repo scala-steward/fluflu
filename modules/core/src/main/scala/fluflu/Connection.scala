@@ -44,7 +44,26 @@ object Connection {
     ipMulticastLoop: Option[Boolean] = None,
     tcpNoDelay: Option[Boolean] = Some(true),
     soTimeout: Option[Int] = Some(5000)
-  )
+  ) {
+    def apply(ch: SocketChannel): Unit = {
+      import StandardSocketOptions._
+
+      ipMulticastIf.foreach(ch.setOption(IP_MULTICAST_IF, _))
+      ipMulticastLoop.foreach(ch.setOption[JBool](IP_MULTICAST_LOOP, _))
+      ipMulticastTtl.foreach(ch.setOption[Integer](IP_MULTICAST_TTL, _))
+      ipTos.foreach(ch.setOption[Integer](IP_TOS, _))
+      soBroadcast.foreach(ch.setOption[JBool](SO_BROADCAST, _))
+      soKeepalive.foreach(ch.setOption[JBool](SO_KEEPALIVE, _))
+      soLinger.foreach(ch.setOption[Integer](SO_LINGER, _))
+      soSndbuf.foreach(ch.setOption[Integer](SO_SNDBUF, _))
+      soRcvbuf.foreach(ch.setOption[Integer](SO_RCVBUF, _))
+      soReuseAddr.foreach(ch.setOption[JBool](SO_REUSEADDR, _))
+      tcpNoDelay.foreach(ch.setOption[JBool](TCP_NODELAY, _))
+
+      val s = ch.socket()
+      soTimeout.foreach(s.setSoTimeout)
+    }
+  }
 
   def apply(remote: SocketAddress, socketOptions: SocketOptions, settings: Settings, clock: Clock): Connection =
     new ConnectionImpl(remote, socketOptions, settings)(clock)
@@ -58,7 +77,6 @@ object Connection {
   class ConnectionImpl(remote: SocketAddress, socketOptions: SocketOptions, settings: Settings)(implicit clock: Clock)
       extends Connection
       with LazyLogging {
-    import StandardSocketOptions._
 
     @volatile private[this] var closed: Boolean = false
 
@@ -67,20 +85,9 @@ object Connection {
 
     protected def channelOpen: SocketChannel = {
       val ch = SocketChannel.open()
-      socketOptions.ipMulticastIf.foreach(ch.setOption(IP_MULTICAST_IF, _))
-      socketOptions.ipMulticastLoop.foreach(ch.setOption[JBool](IP_MULTICAST_LOOP, _))
-      socketOptions.ipMulticastTtl.foreach(ch.setOption[Integer](IP_MULTICAST_TTL, _))
-      socketOptions.ipTos.foreach(ch.setOption[Integer](IP_TOS, _))
-      socketOptions.soBroadcast.foreach(ch.setOption[JBool](SO_BROADCAST, _))
-      socketOptions.soKeepalive.foreach(ch.setOption[JBool](SO_KEEPALIVE, _))
-      socketOptions.soLinger.foreach(ch.setOption[Integer](SO_LINGER, _))
-      socketOptions.soSndbuf.foreach(ch.setOption[Integer](SO_SNDBUF, _))
-      socketOptions.soRcvbuf.foreach(ch.setOption[Integer](SO_RCVBUF, _))
-      socketOptions.soReuseAddr.foreach(ch.setOption[JBool](SO_REUSEADDR, _))
-      socketOptions.tcpNoDelay.foreach(ch.setOption[JBool](TCP_NODELAY, _))
 
-      val s = ch.socket()
-      socketOptions.soTimeout.foreach(s.setSoTimeout)
+      socketOptions.apply(ch)
+
       ch
     }
 
